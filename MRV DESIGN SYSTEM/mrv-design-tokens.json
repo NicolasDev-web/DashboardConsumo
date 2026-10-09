@@ -1,0 +1,395 @@
+{
+  "$schema": "https://example.com/mrv-design-tokens.schema.json",
+  "$meta": {
+    "name": "MRV Design Tokens",
+    "source": "MRV Comunicação Comercial - Versão 02 / Março 2020",
+    "classification": {
+      "official": "Explicitamente presente ou objetivamente verificável no material",
+      "inferred": "Padrão recorrente inferido dos exemplos",
+      "recommended": "Extensão para implementação digital"
+    }
+  },
+  "color": {
+    "brand": {
+      "green900": {
+        "value": "#006B3F",
+        "confidence": "official"
+      },
+      "green700": {
+        "value": "#079D56",
+        "confidence": "official"
+      },
+      "green500": {
+        "value": "#00D38D",
+        "confidence": "official"
+      },
+      "green300": {
+        "value": "#82EA5B",
+        "confidence": "official"
+      },
+      "orange500": {
+        "value": "#FF8B22",
+        "confidence": "official"
+      },
+      "orange300": {
+        "value": "#FFB719",
+        "confidence": "official"
+      },
+      "purple700": {
+        "value": "#793F98",
+        "confidence": "official"
+      },
+      "purple500": {
+        "value": "#AC41D8",
+        "confidence": "official"
+      },
+      "pink600": {
+        "value": "#F7287C",
+        "confidence": "official"
+      },
+      "pink400": {
+        "value": "#FF5AAD",
+        "confidence": "official"
+      },
+      "yellow400": {
+        "value": "#FFF028",
+        "confidence": "official"
+      }
+    },
+    "expandedNeutral": {
+      "green500": {
+        "value": "#91A582",
+        "confidence": "official"
+      },
+      "green200": {
+        "value": "#CDE1B3",
+        "confidence": "official"
+      },
+      "orange100": {
+        "value": "#FCD9B4",
+        "confidence": "official"
+      },
+      "purple300": {
+        "value": "#C595C3",
+        "confidence": "official"
+      },
+      "pink200": {
+        "value": "#F7CBDD",
+        "confidence": "official"
+      },
+      "yellow100": {
+        "value": "#FFEDA6",
+        "confidence": "official"
+      }
+    },
+    "restrictedSupport": {
+      "greenDark": {
+        "value": "#1A4236",
+        "confidence": "official"
+      },
+      "orangeDark": {
+        "value": "#BA4726",
+        "confidence": "official"
+      },
+      "purpleDark": {
+        "value": "#4D3366",
+        "confidence": "official"
+      },
+      "pinkDark": {
+        "value": "#8F3B6B",
+        "confidence": "official"
+      },
+      "brown": {
+        "value": "#916133",
+        "confidence": "official"
+      }
+    },
+    "class": {
+      "green950": {
+        "value": "#00331F",
+        "confidence": "official"
+      },
+      "green900": {
+        "value": "#006B3F",
+        "confidence": "official"
+      },
+      "green500": {
+        "value": "#00D38D",
+        "confidence": "official"
+      },
+      "white": {
+        "value": "#FFFFFF",
+        "confidence": "official"
+      }
+    },
+    "semantic": {
+      "success": {
+        "value": "{color.brand.green900}",
+        "confidence": "recommended"
+      },
+      "warning": {
+        "value": "{color.brand.orange300}",
+        "confidence": "recommended"
+      },
+      "error": {
+        "value": "{color.restrictedSupport.orangeDark}",
+        "confidence": "recommended"
+      },
+      "info": {
+        "value": "{color.brand.purple700}",
+        "confidence": "recommended"
+      },
+      "focus": {
+        "value": "{color.brand.green500}",
+        "confidence": "recommended"
+      },
+      "textPrimary": {
+        "value": "{color.restrictedSupport.greenDark}",
+        "confidence": "recommended"
+      },
+      "surface": {
+        "value": "#FFFFFF",
+        "confidence": "recommended"
+      },
+      "surfaceSubtle": {
+        "value": "rgba(0,107,63,0.04)",
+        "confidence": "recommended"
+      },
+      "borderSubtle": {
+        "value": "rgba(26,66,54,0.18)",
+        "confidence": "recommended"
+      },
+      "disabledSurface": {
+        "value": "rgba(26,66,54,0.08)",
+        "confidence": "recommended"
+      },
+      "disabledText": {
+        "value": "rgba(26,66,54,0.45)",
+        "confidence": "recommended"
+      }
+    }
+  },
+  "typography": {
+    "fontFamily": {
+      "brand": {
+        "value": "Averta",
+        "confidence": "official"
+      },
+      "fallback": {
+        "value": [
+          "Manrope",
+          "Avenir Next",
+          "Inter",
+          "Arial",
+          "sans-serif"
+        ],
+        "confidence": "recommended"
+      }
+    },
+    "weight": {
+      "light": {
+        "value": 300,
+        "confidence": "official-conceptual"
+      },
+      "regular": {
+        "value": 400,
+        "confidence": "official-conceptual"
+      },
+      "semibold": {
+        "value": 600,
+        "confidence": "inferred"
+      },
+      "bold": {
+        "value": 700,
+        "confidence": "official-conceptual"
+      },
+      "black": {
+        "value": 900,
+        "confidence": "official-conceptual"
+      }
+    },
+    "size": {
+      "display": {
+        "value": "56px",
+        "confidence": "recommended"
+      },
+      "h1": {
+        "value": "40px",
+        "confidence": "recommended"
+      },
+      "h2": {
+        "value": "32px",
+        "confidence": "recommended"
+      },
+      "h3": {
+        "value": "24px",
+        "confidence": "recommended"
+      },
+      "h4": {
+        "value": "20px",
+        "confidence": "recommended"
+      },
+      "bodyLarge": {
+        "value": "18px",
+        "confidence": "recommended"
+      },
+      "body": {
+        "value": "16px",
+        "confidence": "recommended"
+      },
+      "bodySmall": {
+        "value": "14px",
+        "confidence": "recommended"
+      },
+      "caption": {
+        "value": "12px",
+        "confidence": "recommended"
+      }
+    }
+  },
+  "spacing": {
+    "2xs": {
+      "value": "4px",
+      "confidence": "recommended"
+    },
+    "xs": {
+      "value": "8px",
+      "confidence": "recommended"
+    },
+    "sm": {
+      "value": "12px",
+      "confidence": "recommended"
+    },
+    "md": {
+      "value": "16px",
+      "confidence": "recommended"
+    },
+    "lg": {
+      "value": "24px",
+      "confidence": "recommended"
+    },
+    "xl": {
+      "value": "32px",
+      "confidence": "recommended"
+    },
+    "2xl": {
+      "value": "48px",
+      "confidence": "recommended"
+    },
+    "3xl": {
+      "value": "64px",
+      "confidence": "recommended"
+    }
+  },
+  "radius": {
+    "button": {
+      "value": "8px",
+      "confidence": "recommended"
+    },
+    "input": {
+      "value": "8px",
+      "confidence": "recommended"
+    },
+    "card": {
+      "value": "12px",
+      "confidence": "recommended"
+    },
+    "modal": {
+      "value": "16px",
+      "confidence": "recommended"
+    }
+  },
+  "shadow": {
+    "0": {
+      "value": "none",
+      "confidence": "recommended"
+    },
+    "1": {
+      "value": "0 1px 2px rgba(26,66,54,0.08)",
+      "confidence": "recommended"
+    },
+    "2": {
+      "value": "0 4px 12px rgba(26,66,54,0.10)",
+      "confidence": "recommended"
+    },
+    "3": {
+      "value": "0 12px 28px rgba(26,66,54,0.14)",
+      "confidence": "recommended"
+    }
+  },
+  "motion": {
+    "fast": {
+      "value": "120ms",
+      "confidence": "recommended"
+    },
+    "base": {
+      "value": "180ms",
+      "confidence": "recommended"
+    },
+    "slow": {
+      "value": "240ms",
+      "confidence": "recommended"
+    },
+    "emphasis": {
+      "value": "320ms",
+      "confidence": "recommended"
+    },
+    "easing": {
+      "value": "cubic-bezier(.2,.8,.2,1)",
+      "confidence": "recommended"
+    }
+  },
+  "breakpoint": {
+    "sm": {
+      "value": "480px",
+      "confidence": "recommended"
+    },
+    "md": {
+      "value": "768px",
+      "confidence": "recommended"
+    },
+    "lg": {
+      "value": "1024px",
+      "confidence": "recommended"
+    },
+    "xl": {
+      "value": "1280px",
+      "confidence": "recommended"
+    },
+    "2xl": {
+      "value": "1440px",
+      "confidence": "recommended"
+    }
+  },
+  "logo": {
+    "minimumDigitalWidth": {
+      "value": "70px",
+      "confidence": "official"
+    },
+    "minimumPrintWidth": {
+      "value": "20mm",
+      "confidence": "official"
+    },
+    "clearSpace": {
+      "value": "2x",
+      "confidence": "official"
+    }
+  },
+  "icon": {
+    "constructionGrid": {
+      "value": "16x16",
+      "confidence": "official"
+    },
+    "referenceCell": {
+      "value": "10px at 160x160 example",
+      "confidence": "official"
+    },
+    "uiSize": {
+      "value": [
+        "20px",
+        "24px"
+      ],
+      "confidence": "recommended"
+    }
+  }
+}
