@@ -34,25 +34,45 @@ def inject_mrv_theme() -> None:
         h1 {{ font-weight: 700; }}
         h2, h3 {{ font-weight: 600; }}
 
-        .block-container {{ max-width: 1480px; padding-top: 1.6rem; padding-bottom: 3rem; }}
-        .mrv-hero {{
-          position: relative; overflow: hidden; min-height: 172px;
-          padding: 28px 32px; margin-bottom: 24px; border-radius: 16px;
-          background: var(--mrv-green-900); color: white;
+        .block-container {{ max-width: 1480px; padding-top: 3.4rem; padding-bottom: 3rem; }}
+        .mrv-header {{ margin: 0 0 18px; }}
+        .mrv-header .eyebrow {{ color: {COLORS['muted']}; font-size: .82rem; margin-bottom: 6px; }}
+        .mrv-header h1 {{ color: var(--mrv-green-900); font-size: clamp(1.6rem, 2.4vw, 2.1rem); margin: 0; padding: 0; line-height: 1.2; }}
+
+        .mrv-insight {{
+          padding: 20px 24px; margin: 0 0 18px; background: #FFFFFF;
+          border: 1px solid var(--mrv-border); border-left: 6px solid var(--mrv-green-900);
+          border-radius: 12px;
         }}
-        .mrv-hero::after {{
-          content: ""; position: absolute; width: 230px; height: 230px;
-          right: -58px; top: -78px; border: 34px solid rgba(130,234,91,.32);
-          transform: rotate(20deg); border-radius: 54% 46% 58% 42%;
+        .mrv-insight.attention {{ border-left-color: {COLORS['orange']}; }}
+        .mrv-insight.positive {{ border-left-color: var(--mrv-green-500); }}
+        .mrv-insight .headline {{ font-size: 1.22rem; line-height: 1.45; color: var(--mrv-text); }}
+        .mrv-insight .headline strong {{ color: var(--mrv-green-900); }}
+        .mrv-insight .detail {{ margin-top: 8px; color: {COLORS['muted']}; font-size: .92rem; line-height: 1.5; }}
+
+        .mrv-strip {{
+          display: flex; flex-wrap: wrap; gap: 8px 22px; padding: 12px 16px; margin: 4px 0 14px;
+          background: #FFFFFF; border: 1px solid var(--mrv-border); border-radius: 10px; font-size: .9rem;
         }}
-        .mrv-hero::before {{
-          content: ""; position: absolute; width: 120px; height: 120px;
-          right: 118px; bottom: -76px; background: rgba(0,211,141,.28);
-          transform: rotate(34deg); border-radius: 22px;
-        }}
-        .mrv-hero h1 {{ color: white; font-size: clamp(2rem, 3vw, 3rem); margin: 0 0 10px; max-width: 760px; }}
-        .mrv-hero p {{ color: rgba(255,255,255,.84); margin: 0; max-width: 760px; line-height: 1.55; }}
-        .mrv-hero .meta {{ margin-top: 22px; font-size: .82rem; color: #CBEBDD; }}
+        .mrv-strip span {{ color: {COLORS['muted']}; }}
+        .mrv-strip strong {{ color: var(--mrv-text); font-size: 1.02rem; margin-right: 4px; }}
+
+        .mrv-share {{ display: grid; gap: 14px; padding: 18px 20px; background: #FFFFFF; border: 1px solid var(--mrv-border); border-radius: 12px; }}
+        .mrv-share .row-top {{ display: flex; justify-content: space-between; gap: 12px; font-size: .95rem; }}
+        .mrv-share .row-top b {{ color: var(--mrv-text); }}
+        .mrv-share .row-top span {{ color: var(--mrv-text); white-space: nowrap; }}
+        .mrv-share .track {{ height: 10px; margin: 6px 0 4px; background: #EEF3F1; border-radius: 6px; overflow: hidden; }}
+        .mrv-share .fill {{ height: 100%; border-radius: 6px; }}
+        .mrv-share .help {{ color: {COLORS['muted']}; font-size: .78rem; }}
+
+        .mrv-performance {{ display:grid; gap:16px; }}
+        .mrv-performance > div {{ padding:16px 18px; background:#FFFFFF; border:1px solid var(--mrv-border); border-radius:10px; }}
+        .mrv-performance h4 {{ margin:0 0 10px; color:var(--mrv-text); font-size:.98rem; }}
+        .mrv-performance ol {{ margin:0; padding:0; list-style:none; display:grid; gap:9px; }}
+        .mrv-performance li {{ display:flex; justify-content:space-between; gap:12px; padding-top:9px; border-top:1px solid #E8EFEC; font-size:.86rem; }}
+        .mrv-performance li:first-child {{ padding-top:0; border-top:0; }}
+        .mrv-performance li span {{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }}
+        .mrv-performance li strong {{ color:var(--mrv-green-900); white-space:nowrap; font-size:.82rem; }}
 
         .mrv-section-title {{ margin: 12px 0 2px; font-size: 1.35rem; font-weight: 700; color: var(--mrv-text); }}
         .mrv-section-copy {{ margin: 0 0 14px; color: {COLORS['muted']}; font-size: .92rem; }}
@@ -67,6 +87,7 @@ def inject_mrv_theme() -> None:
         .mrv-kpi .note {{ color: {COLORS['muted']}; font-size: .76rem; margin-top: 10px; }}
         .mrv-kpi.stock {{ border-top-color: {COLORS['stock']}; }}
         .mrv-kpi.consumption {{ border-top-color: var(--mrv-green-500); }}
+        .mrv-kpi.attention {{ border-top-color: {COLORS['orange']}; }}
 
         .mrv-empty {{
           padding: 32px; border: 1px dashed #A9BDB5; border-radius: 12px;
@@ -104,8 +125,10 @@ def inject_mrv_theme() -> None:
 
         @media (max-width: 760px) {{
           .block-container {{ padding-left: 1rem; padding-right: 1rem; }}
-          .mrv-hero {{ padding: 24px 20px; min-height: 190px; }}
-          .mrv-hero::after {{ opacity: .55; }}
+          .mrv-insight {{ padding: 16px 18px; }}
+          .mrv-insight .headline {{ font-size: 1.08rem; }}
+          .mrv-performance li {{ display:block; }}
+          .mrv-performance li strong {{ display:block; margin-top:3px; }}
         }}
         @media (prefers-reduced-motion: reduce) {{ * {{ scroll-behavior: auto!important; transition: none!important; }} }}
         </style>
@@ -114,17 +137,51 @@ def inject_mrv_theme() -> None:
     )
 
 
-def hero(snapshot_label: str) -> None:
+def page_header(title: str, snapshot_label: str) -> None:
     st.markdown(
         f"""
-        <section class="mrv-hero">
-          <h1>Consumo e estoque imobiliário</h1>
-          <p>Leitura comercial do portfólio por empreendimento, bloco e andar. Consumo representa vendas observadas, não a demanda total de mercado.</p>
-          <div class="meta"><span class="mrv-status-dot"></span>Snapshot ativo: {html.escape(snapshot_label)}</div>
-        </section>
+        <header class="mrv-header">
+          <div class="eyebrow"><span class="mrv-status-dot"></span>Consumo e estoque · dados de {html.escape(snapshot_label)}</div>
+          <h1>{html.escape(title)}</h1>
+        </header>
         """,
         unsafe_allow_html=True,
     )
+
+
+def strong(text: str) -> str:
+    return f"<strong>{html.escape(str(text))}</strong>"
+
+
+def insight(headline_html: str, detail_html: str = "", tone: str = "") -> None:
+    """Frase de conclusão da tela. Os argumentos já devem chegar escapados."""
+    detail = f'<div class="detail">{detail_html}</div>' if detail_html else ""
+    st.markdown(
+        f'<div class="mrv-insight {html.escape(tone)}"><div class="headline">{headline_html}</div>{detail}</div>',
+        unsafe_allow_html=True,
+    )
+
+
+def summary_strip(items: list[tuple[str, str]]) -> None:
+    """Resumo em linha (valor, rótulo), usado onde cards repetiriam informação."""
+    body = "".join(f"<div><strong>{html.escape(value)}</strong><span>{html.escape(label)}</span></div>" for value, label in items)
+    st.markdown(f'<div class="mrv-strip">{body}</div>', unsafe_allow_html=True)
+
+
+def share_bars(rows: list[dict]) -> None:
+    """Barras de participação: label, value, share (0–1), color e help opcionais."""
+    parts = []
+    for row in rows:
+        share = 0 if row["share"] is None or pd.isna(row["share"]) else row["share"]
+        width = max(share * 100, 0.8) if row["value"] else 0
+        help_text = f'<div class="help">{html.escape(row["help"])}</div>' if row.get("help") else ""
+        parts.append(
+            f'<div><div class="row-top"><b>{html.escape(row["label"])}</b>'
+            f'<span>{html.escape(br_int(row["value"]))} · {html.escape(br_pct(row["share"], 0))}</span></div>'
+            f'<div class="track"><div class="fill" style="width:{width:.1f}%;background:{row["color"]}"></div></div>'
+            f"{help_text}</div>"
+        )
+    st.markdown(f'<div class="mrv-share">{"".join(parts)}</div>', unsafe_allow_html=True)
 
 
 def section(title: str, copy: str = "") -> None:
@@ -161,6 +218,15 @@ def br_pct(value: float | None, decimals: int = 1) -> str:
     if value is None or pd.isna(value):
         return "n.d."
     return f"{value * 100:.{decimals}f}%".replace(".", ",")
+
+
+def br_pp(difference: float) -> str:
+    """Diferença entre duas proporções em pontos percentuais, com sentido explícito."""
+    points = abs(difference) * 100
+    if points < 0.05:
+        return "igual à"
+    direction = "acima da" if difference > 0 else "abaixo da"
+    return f"{points:.1f} p.p. {direction}".replace(".", ",", 1)
 
 
 def plotly_layout(fig: go.Figure, height: int = 370, margin: dict | None = None) -> go.Figure:

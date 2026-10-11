@@ -7,7 +7,16 @@ import pytest
 
 from src.constants import INITIAL_WORKBOOK
 from src.importer import read_snapshot
-from src.metrics import floor_metrics, portfolio_kpis, transition_metrics
+from src.metrics import (
+    block_sales,
+    block_stack_sales,
+    floor_band_comparison,
+    floor_metrics,
+    portfolio_kpis,
+    progress_summary,
+    stock_by_group,
+    transition_metrics,
+)
 from src.storage import active_snapshot_dates, import_snapshot, load_snapshot
 from src.transform import transform_snapshot, warning_counts
 from src.validation import validate_structure
@@ -120,3 +129,51 @@ def test_storage_import_and_transactional_replacement(tmp_path, initial_snapshot
         db_path=db_path,
     )
     assert len(load_snapshot(snapshot_date, db_path)) == 10
+
+
+def test_stock_groups_cover_all_unsold_units(initial_snapshot: pd.DataFrame) -> None:
+    groups = stock_by_group(initial_snapshot).set_index("group")["units"]
+    assert groups.to_dict() == {"Em comercialização": 6448, "Reservadas": 320, "Fora de venda": 3331}
+    assert groups.sum() == 10099
+
+
+def test_progress_summary_shows_stock_concentration(initial_snapshot: pd.DataFrame) -> None:
+    summary = progress_summary(initial_snapshot).set_index("band")
+    assert summary["enterprises"].sum() == 178
+    assert summary["stock"].sum() == 10099
+    low = summary.loc["Menos de 50% vendido"]
+    assert int(low["enterprises"]) == 33
+    assert int(low["stock"]) == 6816
+    assert int(summary.loc["95% ou mais vendido", "enterprises"]) == 105
+
+
+def test_floor_band_comparison_ignores_missing_floor(initial_snapshot: pd.DataFrame) -> None:
+    comparison = floor_band_comparison(initial_snapshot)
+    assert comparison["low"]["total"] == 39144
+    assert comparison["high"]["total"] == 10983
+    assert comparison["low"]["consumption"] > comparison["high"]["consumption"]
+
+
+def test_block_sales_orders_by_percent_and_preserves_volume(initial_snapshot: pd.DataFrame) -> None:
+    enterprise = initial_snapshot.loc[
+        initial_snapshot["enterprise_name"].eq("ALAMEDA IMPERIAL")
+    ]
+    blocks = block_sales(enterprise)
+    assert blocks.iloc[0]["consumption"] == pytest.approx(1.0)
+    assert blocks.iloc[-1]["block_name"] == "BLOCO 01"
+    assert int(blocks.iloc[-1]["sold"]) == 16
+    assert int(blocks.iloc[-1]["total"]) == 20
+    assert blocks.iloc[-1]["consumption"] == pytest.approx(0.8)
+    assert int(blocks["sold"].sum()) == int(enterprise["is_sold"].sum())
+    assert int(blocks["total"].sum()) == enterprise["unit_id"].nunique()
+
+
+def test_block_stack_sales_reconciles_positioned_units(initial_snapshot: pd.DataFrame) -> None:
+    enterprise = initial_snapshot.loc[
+        initial_snapshot["enterprise_name"].eq("ALAMEDA IMPERIAL")
+    ]
+    stacks = block_stack_sales(enterprise)
+    assert set(stacks["inferred_stack"].astype(int)) == {1, 2, 3, 4}
+    assert int(stacks["total"].sum()) == 332
+    assert int(stacks["sold"].sum()) == 316
+    assert stacks["consumption"].between(0, 1).all()

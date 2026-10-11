@@ -5,3 +5,7 @@ __pycache__/
 .streamlit/secrets.toml
 data/*.duckdb
 data/*.wal
+web/node_modules/
+web/.next/
+web/.vercel/
+npm-debug.log*

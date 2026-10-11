@@ -3,6 +3,8 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
+from .constants import PROGRESS_BANDS, STATUS_GROUP_ORDER, STATUS_GROUPS
+
 
 def portfolio_kpis(frame: pd.DataFrame) -> dict[str, float | int | None]:
     total = int(frame["unit_id"].nunique())
@@ -32,6 +34,52 @@ def grouped_metrics(frame: pd.DataFrame, group_cols: str | list[str]) -> pd.Data
     return result
 
 
+def with_inferred_stack(frame: pd.DataFrame) -> pd.DataFrame:
+    """Identifica a prumada pelos dois últimos dígitos do número da unidade.
+
+    A base não possui uma dimensão oficial de prumada. Para preservar a regra
+    já validada pela aplicação, somente posições entre 01 e 12 e registros com
+    andar informado são considerados comparáveis.
+    """
+
+    result = frame.copy()
+    unit_number = pd.to_numeric(result["unit_name"], errors="coerce")
+    stack = unit_number.mod(100).astype("Int64")
+    result["inferred_stack"] = stack.where(
+        result["floor"].notna() & stack.between(1, 12)
+    )
+    return result
+
+
+def block_sales(frame: pd.DataFrame) -> pd.DataFrame:
+    """Retorna avanço de vendas por bloco com rótulos não ambíguos."""
+
+    result = grouped_metrics(frame, ["block_id", "block_name"])
+    result = result.sort_values(
+        ["consumption", "sold", "total", "block_name"],
+        ascending=[False, False, False, True],
+    ).reset_index(drop=True)
+    duplicates = result["block_name"].duplicated(keep=False)
+    result["block_label"] = result["block_name"]
+    result.loc[duplicates, "block_label"] = (
+        result.loc[duplicates, "block_name"]
+        + " · "
+        + result.loc[duplicates, "block_id"].astype("string").str.slice(0, 4)
+    )
+    return result
+
+
+def block_stack_sales(frame: pd.DataFrame) -> pd.DataFrame:
+    """Retorna vendas por bloco e prumada para comparação no mesmo grão."""
+
+    positioned = with_inferred_stack(frame)
+    positioned = positioned.loc[positioned["inferred_stack"].notna()]
+    return grouped_metrics(
+        positioned,
+        ["block_id", "block_name", "inferred_stack"],
+    )
+
+
 def stock_by_status(frame: pd.DataFrame) -> pd.DataFrame:
     unsold = frame.loc[~frame["is_sold"]]
     result = grouped_metrics(unsold, "status_unit_normalized")
@@ -41,6 +89,58 @@ def stock_by_status(frame: pd.DataFrame) -> pd.DataFrame:
     return result[["status_unit_normalized", "units", "share"]].sort_values(
         "units", ascending=False
     )
+
+
+def stock_by_group(frame: pd.DataFrame) -> pd.DataFrame:
+    """Resume o estoque não vendido nos grupos de leitura simplificada."""
+
+    unsold = frame.loc[~frame["is_sold"]]
+    groups = unsold["status_unit_normalized"].map(STATUS_GROUPS).fillna(STATUS_GROUP_ORDER[-1])
+    units = unsold.groupby(groups)["unit_id"].nunique()
+    result = units.reindex(STATUS_GROUP_ORDER, fill_value=0).rename("units").rename_axis("group").reset_index()
+    result = result.loc[result["units"].gt(0) | result["group"].ne(STATUS_GROUP_ORDER[-1])]
+    stock_total = int(result["units"].sum())
+    result["share"] = result["units"].div(stock_total) if stock_total else np.nan
+    return result.reset_index(drop=True)
+
+
+def progress_band(consumption: pd.Series) -> pd.Series:
+    labels = [label for label, _ in PROGRESS_BANDS]
+    edges = [lower for _, lower in PROGRESS_BANDS] + [np.inf]
+    return pd.cut(consumption, bins=edges, labels=labels, right=False, include_lowest=True)
+
+
+def enterprise_progress(frame: pd.DataFrame) -> pd.DataFrame:
+    result = grouped_metrics(frame, ["city", "enterprise_name"])
+    result["band"] = progress_band(result["consumption"])
+    return result
+
+
+def progress_summary(frame: pd.DataFrame) -> pd.DataFrame:
+    """Quantos empreendimentos e quanto estoque existem em cada faixa de avanço."""
+
+    enterprises = enterprise_progress(frame)
+    summary = (
+        enterprises.groupby("band", observed=False)
+        .agg(enterprises=("enterprise_name", "nunique"), stock=("stock", "sum"))
+        .reindex([label for label, _ in PROGRESS_BANDS], fill_value=0)
+        .rename_axis("band")
+        .reset_index()
+    )
+    stock_total = int(summary["stock"].sum())
+    summary["stock_share"] = summary["stock"].div(stock_total) if stock_total else np.nan
+    return summary
+
+
+def floor_band_comparison(frame: pd.DataFrame, low_max: int = 5, high_min: int = 10) -> dict | None:
+    """Compara o % vendido de andares baixos e altos, quando ambos existem."""
+
+    located = frame.loc[frame["floor"].notna()]
+    low = portfolio_kpis(located.loc[located["floor"].le(low_max)])
+    high = portfolio_kpis(located.loc[located["floor"].ge(high_min)])
+    if not low["total"] or not high["total"]:
+        return None
+    return {"low": low, "high": high, "low_max": low_max, "high_min": high_min}
 
 
 def floor_metrics(frame: pd.DataFrame, include_missing: bool = False) -> pd.DataFrame:

@@ -18,7 +18,7 @@ from src.storage import (
     sha256_bytes,
 )
 from src.transform import transform_snapshot, warning_counts
-from src.ui import hero, inject_mrv_theme, sorted_unique
+from src.ui import inject_mrv_theme, page_header, sorted_unique
 from src.validation import validate_structure
 from src.views import enterprise, floors, overview, quality, velocity
 
@@ -31,6 +31,15 @@ st.set_page_config(
 )
 inject_mrv_theme()
 initialize_database()
+
+# Cada tela abre com a pergunta que ela responde.
+PAGE_TITLES = {
+    "Visão geral": "Como estão as vendas do portfólio?",
+    "Blocos e prumadas": "Como estão as vendas por bloco e prumada?",
+    "Empreendimento": "Como está este empreendimento?",
+    "Velocidade": "Em que ritmo estamos vendendo?",
+    "Qualidade dos dados": "Posso confiar nestes dados?",
+}
 
 
 def import_payload(payload: bytes, file_name: str, snapshot_date: date, replace: bool) -> None:
@@ -74,11 +83,7 @@ with st.sidebar:
     st.markdown("## Consumo & estoque")
     st.caption("Gestão comercial · painel local")
 
-    page = st.radio(
-        "Navegação",
-        ["Visão geral", "Blocos e prumadas", "Detalhe do empreendimento", "Velocidade", "Qualidade dos dados"],
-        label_visibility="collapsed",
-    )
+    page = st.radio("Navegação", list(PAGE_TITLES), label_visibility="collapsed")
 
     with st.expander("Importar snapshot", expanded=not bool(active_snapshot_dates())):
         snapshot_input = st.date_input("Data do snapshot", value=date.today(), format="DD/MM/YYYY")
@@ -97,7 +102,7 @@ with st.sidebar:
 
 dates = active_snapshot_dates()
 if not dates:
-    hero("nenhum snapshot importado")
+    page_header("Comece importando a base", "nenhum snapshot importado")
     st.markdown(
         """
         <div class="mrv-empty">
@@ -135,10 +140,10 @@ with st.sidebar:
     selected_cities = st.multiselect("Cidade", city_options, key="filter_city", placeholder="Selecione")
 
     cascade = filter_units(frame, cities=selected_cities)
-    if page == "Blocos e prumadas":
+    if page in ("Blocos e prumadas", "Empreendimento"):
         selected_enterprises = []
         selected_blocks = []
-        st.caption("Escolha o empreendimento e o bloco diretamente no espelho de unidades.")
+        st.caption("Nesta tela, o empreendimento e o bloco são escolhidos no topo da página.")
     else:
         enterprise_options = sorted_unique(cascade["enterprise_name"])
         valid_state("filter_enterprise", enterprise_options)
@@ -150,14 +155,19 @@ with st.sidebar:
         selected_blocks = st.multiselect("Bloco", block_options, key="filter_block", placeholder="Selecione")
 
         cascade = filter_units(cascade, blocks=selected_blocks)
-    typology_options = sorted_unique(cascade["typology"])
-    valid_state("filter_typology", typology_options)
-    selected_typologies = st.multiselect("Tipologia", typology_options, key="filter_typology", placeholder="Selecione")
+    advanced_active = bool(st.session_state.get("filter_typology") or st.session_state.get("filter_status"))
+    with st.expander("Mais filtros", expanded=advanced_active):
+        typology_options = sorted_unique(cascade["typology"])
+        valid_state("filter_typology", typology_options)
+        selected_typologies = st.multiselect("Tipologia", typology_options, key="filter_typology", placeholder="Selecione")
 
-    status_options = sorted_unique(cascade["status_unit_normalized"])
-    valid_state("filter_status", status_options)
-    selected_statuses = st.multiselect("Status oficial", status_options, key="filter_status", placeholder="Selecione")
-    include_missing_floor = st.checkbox("Incluir andar não informado", value=False)
+        status_options = sorted_unique(cascade["status_unit_normalized"])
+        valid_state("filter_status", status_options)
+        selected_statuses = st.multiselect("Status oficial", status_options, key="filter_status", placeholder="Selecione")
+        include_missing_floor = st.checkbox(
+            "Listar unidades sem andar", value=False,
+            help="Inclui na lista de unidades do bloco os registros sem andar informado.",
+        )
 
     if st.button("Limpar filtros", use_container_width=True):
         for key in ["filter_city", "filter_enterprise", "filter_block", "filter_typology", "filter_status"]:
@@ -174,14 +184,15 @@ filtered = filter_units(
     statuses=selected_statuses,
 )
 
-hero(selected_date.strftime("%d/%m/%Y"))
+page_header(PAGE_TITLES[page], selected_date.strftime("%d/%m/%Y"))
 
 if page == "Visão geral":
     overview.render(filtered, selected_date)
 elif page == "Blocos e prumadas":
     floors.render(filtered, selected_date, include_missing_floor)
-elif page == "Detalhe do empreendimento":
-    enterprise.render(filtered, selected_date)
+elif page == "Empreendimento":
+    narrowed = any([selected_cities, selected_typologies, selected_statuses])
+    enterprise.render(filtered, selected_date, "média do filtro atual" if narrowed else "média geral")
 elif page == "Velocidade":
     velocity.render(load_all_active())
 else:

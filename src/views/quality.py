@@ -1,12 +1,14 @@
 from __future__ import annotations
 
+import html
+
 import pandas as pd
 import streamlit as st
 
 from ..exports import csv_bytes
 from ..storage import import_history
 from ..transform import warning_counts
-from ..ui import br_int, empty_state, kpi_card, section
+from ..ui import br_int, br_pct, empty_state, insight, section, strong
 
 
 ISSUE_MASKS = {
@@ -20,48 +22,64 @@ ISSUE_MASKS = {
 }
 
 
+DETAIL_LABELS = {
+    "city": "Cidade", "enterprise_name": "Empreendimento", "block_name": "Bloco", "unit_name": "Unidade",
+    "floor": "Andar", "reported_floors": "Pavimentos", "status_unit_raw": "Status oficial",
+    "status_crm_raw": "Status CRM", "typology": "Tipologia", "subtypology": "Subtipologia",
+}
+
+
+def _issue_mask(frame: pd.DataFrame, column: str) -> pd.Series:
+    if column == "reported_floors":
+        return frame[column].isna()
+    return frame[column].fillna(False).astype(bool)
+
+
 def render(frame: pd.DataFrame, snapshot_date) -> None:
+    if frame.empty:
+        empty_state("Nenhuma unidade no recorte", "Remova alguns filtros para avaliar a qualidade dos dados.")
+        return
+
     counts = warning_counts(frame)
     affected = pd.Series(False, index=frame.index)
-    for label, column in ISSUE_MASKS.items():
-        if column == "reported_floors":
-            affected |= frame[column].isna()
-        else:
-            affected |= frame[column].fillna(False).astype(bool)
+    for column in ISSUE_MASKS.values():
+        affected |= _issue_mask(frame, column)
+    clean_share = 1 - affected.sum() / len(frame)
+    present = {label: value for label, value in sorted(counts.items(), key=lambda item: -item[1]) if value > 0}
 
-    cols = st.columns(3)
-    with cols[0]:
-        kpi_card("Erros bloqueantes", "0", "A carga ativa passou pela validação estrutural")
-    with cols[1]:
-        kpi_card("Registros com alerta", br_int(affected.sum()), "Uma linha pode ter mais de um alerta", "stock")
-    with cols[2]:
-        kpi_card("Tipos de alerta", br_int(sum(value > 0 for value in counts.values())), "Categorias presentes no snapshot", "consumption")
+    if not present:
+        insight(f"{strong('Todos os registros')} passaram sem nenhum alerta.", tone="positive")
+    else:
+        top_label, top_count = next(iter(present.items()))
+        insight(
+            f"{strong(br_pct(clean_share))} dos registros não têm nenhum alerta. "
+            "Os alertas não mudam os totais de vendas: nenhum registro é corrigido ou excluído.",
+            f"O ponto mais frequente é {strong(top_label.lower())} ({html.escape(br_int(top_count))} registros). "
+            f"Ao todo, {html.escape(br_int(affected.sum()))} registros têm pelo menos um alerta.",
+            tone="positive" if clean_share >= 0.95 else "attention",
+        )
 
-    section("Resumo dos alertas", "Alertas não alteram nem excluem registros do cálculo de consumo.")
-    summary = pd.DataFrame(
-        [{"tipo_problema": key, "registros": value, "proporcao": value / len(frame) if len(frame) else None} for key, value in counts.items()]
-    ).sort_values("registros", ascending=False)
-    display = summary.rename(columns={"tipo_problema": "Tipo de problema", "registros": "Registros", "proporcao": "Proporção"})
-    display["Proporção"] = display["Proporção"] * 100
-    st.dataframe(display, hide_index=True, use_container_width=True, column_config={"Proporção": st.column_config.NumberColumn(format="%.2f%%")})
-
-    present_issues = [label for label, value in counts.items() if value > 0]
-    if present_issues:
-        selected = st.selectbox("Detalhar alerta", present_issues)
-        column = ISSUE_MASKS[selected]
-        mask = frame[column].isna() if column == "reported_floors" else frame[column].fillna(False).astype(bool)
-        detail = frame.loc[mask, [
+    if present:
+        section("O que precisa de conferência", "Escolha um tipo de alerta para ver e exportar os registros.")
+        summary = pd.DataFrame(
+            [{"Tipo de alerta": label, "Registros": value, "Do total": br_pct(value / len(frame), 2)} for label, value in present.items()]
+        )
+        st.dataframe(summary, hide_index=True, use_container_width=True)
+        selected = st.selectbox("Ver registros de", list(present))
+        detail = frame.loc[_issue_mask(frame, ISSUE_MASKS[selected]), [
             "unit_id", "city", "enterprise_name", "block_name", "unit_name", "floor",
             "reported_floors", "status_unit_raw", "status_crm_raw", "typology", "subtypology",
         ]].copy()
+        st.dataframe(
+            detail.drop(columns="unit_id").rename(columns=DETAIL_LABELS),
+            hide_index=True, use_container_width=True,
+        )
         detail.insert(0, "snapshot_date", snapshot_date)
-        st.dataframe(detail, hide_index=True, use_container_width=True)
-        st.download_button("Exportar registros com problema", csv_bytes(detail), file_name=f"qualidade_{snapshot_date}.csv", mime="text/csv")
-    else:
-        empty_state("Nenhum alerta", "O snapshot atual não apresenta problemas de qualidade catalogados.")
+        st.download_button("Exportar registros com alerta", csv_bytes(detail), file_name=f"qualidade_{snapshot_date}.csv", mime="text/csv")
 
-    section("Histórico de importações", "Execuções substituídas permanecem registradas para auditoria.")
-    history = import_history()
-    if not history.empty:
-        history["file_sha256"] = history["file_sha256"].str.slice(0, 12) + "…"
-        st.dataframe(history, hide_index=True, use_container_width=True)
+    with st.expander("Ver histórico de importações"):
+        st.caption("Importações substituídas continuam registradas para auditoria.")
+        history = import_history()
+        if not history.empty:
+            history["file_sha256"] = history["file_sha256"].str.slice(0, 12) + "…"
+            st.dataframe(history, hide_index=True, use_container_width=True)
