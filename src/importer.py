@@ -35,6 +35,9 @@ def read_snapshot(source: str | Path | bytes | BinaryIO) -> pd.DataFrame:
                 "ID Empreendimento": "string",
                 "ID Bloco": "string",
                 "ID da Unidade": "string",
+                # O número da unidade é também um identificador de exibição.
+                # Forçar texto preserva valores como 01–09, usados na ficha.
+                "Unidade": "string",
             },
         )
         frame = frame.dropna(how="all").reset_index(drop=True)

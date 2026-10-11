@@ -69,7 +69,9 @@ def warning_counts(frame: pd.DataFrame) -> dict[str, int]:
         "Andar não informado": int(frame["floor_missing"].sum()),
         "Pavimentos não informado": int(frame["reported_floors"].isna().sum()),
         "Andar superior aos pavimentos": int(frame["floor_above_reported"].sum()),
-        "Divergência entre status oficial e CRM": int(frame["status_conflict"].sum()),
+        "Divergência na classificação de venda (oficial × CRM)": int(
+            frame["status_conflict"].sum()
+        ),
         "Tipologia não informada": int(frame["typology_missing"].sum()),
         "Subtipologia não informada": int(frame["subtypology_missing"].sum()),
         "Status não reconhecido": int(frame["unknown_status"].sum()),

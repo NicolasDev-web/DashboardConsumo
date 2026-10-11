@@ -42,7 +42,7 @@ type Unit = {
 };
 
 const DATA_DIR = path.join(process.cwd(), "data-generated");
-const snapshotCache = new Map<string, Unit[]>();
+const snapshotCache = new Map<string, { version: string; units: Unit[] }>();
 
 const STATUS_GROUPS: Record<string, string> = {
   "EXCLUSIVO PLATAFORMA": "Em comercialização",
@@ -67,7 +67,7 @@ const ISSUE_DEFS = [
   { key: "floorMissing", label: "Andar não informado" },
   { key: "reportedFloorsMissing", label: "Pavimentos não informado" },
   { key: "floorAboveReported", label: "Andar superior aos pavimentos" },
-  { key: "statusConflict", label: "Divergência entre status oficial e CRM" },
+  { key: "statusConflict", label: "Divergência na classificação de venda (oficial × CRM)" },
   { key: "typologyMissing", label: "Tipologia não informada" },
   { key: "subtypologyMissing", label: "Subtipologia não informada" },
   { key: "unknownStatus", label: "Status não reconhecido" },
@@ -86,11 +86,11 @@ function stringValue(value: unknown) {
 }
 
 function loadSnapshot(date: string): Unit[] {
-  const cached = snapshotCache.get(date);
-  if (cached) return cached;
   const manifest = getManifest();
   const snapshot = manifest.snapshots.find((item) => item.date === date);
   if (!snapshot) throw new Error(`Snapshot ${date} não encontrado.`);
+  const cached = snapshotCache.get(date);
+  if (cached?.version === manifest.generatedAt) return cached.units;
   const payload = readJson<{ columns: string[]; rows: unknown[][] }>(snapshot.file);
   const index = Object.fromEntries(payload.columns.map((column, position) => [column, position]));
   const units = payload.rows.map((row): Unit => ({
@@ -116,7 +116,7 @@ function loadSnapshot(date: string): Unit[] {
     subtypologyMissing: Boolean(row[index.subtypology_missing]),
     unknownStatus: Boolean(row[index.unknown_status]),
   }));
-  snapshotCache.set(date, units);
+  snapshotCache.set(date, { version: manifest.generatedAt, units });
   return units;
 }
 

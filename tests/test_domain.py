@@ -5,7 +5,7 @@ from datetime import date
 import pandas as pd
 import pytest
 
-from src.constants import INITIAL_WORKBOOK
+from src.constants import INITIAL_WORKBOOK, REQUIRED_COLUMNS
 from src.importer import read_snapshot
 from src.metrics import (
     block_sales,
@@ -17,7 +17,12 @@ from src.metrics import (
     stock_by_group,
     transition_metrics,
 )
-from src.storage import active_snapshot_dates, import_snapshot, load_snapshot
+from src.storage import (
+    active_snapshot_dates,
+    import_history,
+    import_snapshot,
+    load_snapshot,
+)
 from src.transform import transform_snapshot, warning_counts
 from src.validation import validate_structure
 from src.views.floors import infer_stack
@@ -42,12 +47,31 @@ def test_initial_snapshot_reconciles_with_sdd(initial_snapshot: pd.DataFrame) ->
     assert initial_snapshot[["enterprise_id", "block_id"]].drop_duplicates().shape[0] == 1818
 
 
+def test_unit_numbers_preserve_source_leading_zeroes(
+    initial_snapshot: pd.DataFrame,
+) -> None:
+    leading_zeroes = initial_snapshot["unit_name"].str.fullmatch(r"0[1-9]", na=False)
+
+    assert int(leading_zeroes.sum()) == 18
+    assert set(initial_snapshot.loc[leading_zeroes, "unit_name"]) == {
+        "01",
+        "02",
+        "03",
+        "04",
+        "05",
+        "06",
+        "07",
+        "08",
+        "09",
+    }
+
+
 def test_quality_counts_reconcile_with_sdd(initial_snapshot: pd.DataFrame) -> None:
     counts = warning_counts(initial_snapshot)
     assert counts["Andar não informado"] == 281
     assert counts["Pavimentos não informado"] == 224
     assert counts["Andar superior aos pavimentos"] == 264
-    assert counts["Divergência entre status oficial e CRM"] == 237
+    assert counts["Divergência na classificação de venda (oficial × CRM)"] == 237
 
 
 def test_floor_one_reconciles_with_sdd(initial_snapshot: pd.DataFrame) -> None:
@@ -91,6 +115,60 @@ def test_validation_blocks_duplicate_and_empty_ids() -> None:
     assert len(result.invalid_rows) == 3
 
 
+def test_validation_blocks_empty_snapshot() -> None:
+    result = validate_structure(pd.DataFrame(columns=sorted(REQUIRED_COLUMNS)))
+
+    assert not result.is_valid
+    assert result.errors == ["A planilha não contém registros de unidades."]
+
+
+def test_validation_blocks_empty_hierarchy_ids() -> None:
+    frame = pd.DataFrame(
+        {
+            "ID Empreendimento": [None, "e"],
+            "ID Bloco": ["b", "  "],
+            "ID da Unidade": ["u1", "u2"],
+            "Cidade": ["A", "A"],
+            "Empreendimento": ["E", "E"],
+            "Bloco": ["B", "B"],
+            "Unidade": ["1", "2"],
+            "Status Unidade": ["VENDIDO", "LANÇADO"],
+            "Pavimentos": [2, 2],
+            "Posição Vertical": [1, 1],
+        }
+    )
+
+    result = validate_structure(frame)
+
+    assert not result.is_valid
+    assert len(result.invalid_rows) == 2
+    assert "1 registro(s) sem ID Empreendimento." in result.errors
+    assert "1 registro(s) sem ID Bloco." in result.errors
+
+
+def test_validation_blocks_duplicated_required_header() -> None:
+    frame = pd.DataFrame(
+        {
+            "ID Empreendimento": ["e"],
+            "ID Bloco": ["b"],
+            "ID da Unidade": ["u1"],
+            "ID da Unidade.1": ["u2"],
+            "Cidade": ["A"],
+            "Empreendimento": ["E"],
+            "Bloco": ["B"],
+            "Unidade": ["1"],
+            "Status Unidade": ["VENDIDO"],
+            "Pavimentos": [2],
+            "Posição Vertical": [1],
+        }
+    )
+
+    result = validate_structure(frame)
+
+    assert not result.is_valid
+    assert result.errors == ["Colunas obrigatórias duplicadas: ID da Unidade"]
+
+
 def test_transitions_ignore_added_and_removed_units() -> None:
     frame = pd.DataFrame(
         {
@@ -129,6 +207,44 @@ def test_storage_import_and_transactional_replacement(tmp_path, initial_snapshot
         db_path=db_path,
     )
     assert len(load_snapshot(snapshot_date, db_path)) == 10
+
+
+def test_failed_replacement_rolls_back_previous_snapshot(
+    tmp_path, initial_snapshot: pd.DataFrame
+) -> None:
+    db_path = tmp_path / "rollback.duckdb"
+    snapshot_date = date(2026, 10, 8)
+    original = initial_snapshot.head(5).copy()
+    import_snapshot(
+        original,
+        snapshot_date,
+        "original.xlsx",
+        "hash-original",
+        0,
+        db_path=db_path,
+    )
+    invalid_replacement = pd.concat(
+        [original.head(1), original.head(1)], ignore_index=True
+    )
+
+    with pytest.raises(Exception):
+        import_snapshot(
+            invalid_replacement,
+            snapshot_date,
+            "invalid.xlsx",
+            "hash-invalid",
+            0,
+            replace=True,
+            db_path=db_path,
+        )
+
+    restored = load_snapshot(snapshot_date, db_path)
+    history = import_history(db_path)
+    assert set(restored["unit_id"]) == set(original["unit_id"])
+    assert len(restored) == len(original)
+    assert history[["file_name", "status"]].to_dict(orient="records") == [
+        {"file_name": "original.xlsx", "status": "ACTIVE"}
+    ]
 
 
 def test_stock_groups_cover_all_unsold_units(initial_snapshot: pd.DataFrame) -> None:
