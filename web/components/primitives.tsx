@@ -6,7 +6,7 @@ import { integer, pct } from "@/lib/format";
 import { isSensiaEnterprise } from "@/lib/brand";
 import type { Kpis } from "@/lib/types";
 
-export function Icon({ name }: { name: "overview" | "blocks" | "enterprise" | "velocity" | "quality" | "filter" | "download" }) {
+export function Icon({ name }: { name: "overview" | "blocks" | "enterprise" | "velocity" | "quality" | "filter" | "download" | "expand" | "collapse" }) {
   const paths: Record<string, ReactNode> = {
     overview: <><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z" /></>,
     blocks: <><path d="M4 19V9l5-4 5 4v10M14 19V6l3-2 3 2v13M2 20h20" /></>,
@@ -15,6 +15,8 @@ export function Icon({ name }: { name: "overview" | "blocks" | "enterprise" | "v
     quality: <><path d="M12 3l8 4v5c0 5-3.4 8-8 9-4.6-1-8-4-8-9V7zM8.5 12l2.2 2.2 4.8-5" /></>,
     filter: <><path d="M4 5h16M7 12h10M10 19h4" /></>,
     download: <><path d="M12 3v12M7 10l5 5 5-5M5 21h14" /></>,
+    expand: <><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" /></>,
+    collapse: <><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" /></>,
   };
   return <svg className="icon" viewBox="0 0 24 24" aria-hidden="true">{paths[name]}</svg>;
 }
@@ -41,6 +43,10 @@ export function SectionHeader({ title, copy, action }: { title: string; copy?: s
 
 export function MetricToggle({ options, value, onChange, label = "Comparar por" }: { options: string[]; value: string; onChange: (value: string) => void; label?: string }) {
   return <div className="metric-toggle" role="group" aria-label={label}>{options.map((option) => <button key={option} className={value === option ? "active" : ""} onClick={() => onChange(option)}>{option}</button>)}</div>;
+}
+
+export function ExpandButton({ expanded, label, onClick }: { expanded: boolean; label: string; onClick: () => void }) {
+  return <button type="button" className="expand-button" onClick={onClick} aria-label={expanded ? `Sair da tela cheia de ${label}` : `Abrir ${label} em tela cheia`}><Icon name={expanded ? "collapse" : "expand"} /><span>{expanded ? "Sair da tela cheia" : "Tela cheia"}</span></button>;
 }
 
 type BarItem = {
