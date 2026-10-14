@@ -16,7 +16,8 @@ function Timeline({ data }: { data: VelocityData }) {
 }
 
 export default function VelocityView({ data, loading }: { data: VelocityData | null; loading: boolean }) {
-  if (loading || !data) return <Loading label="Calculando a velocidade" />;
+  if (loading) return <Loading label="Calculando a velocidade" />;
+  if (!data) return <Empty title="Não foi possível calcular a velocidade" copy="Tente carregar a página novamente ou verifique as fotos importadas." />;
   if (data.timeline.length < 2) {
     const current = data.timeline[0];
     if (!current) return <Empty title="Nenhuma foto disponível" copy="Faça a primeira ingestão para iniciar o acompanhamento." />;

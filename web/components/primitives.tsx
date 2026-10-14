@@ -42,11 +42,11 @@ export function SectionHeader({ title, copy, action }: { title: string; copy?: s
 }
 
 export function MetricToggle({ options, value, onChange, label = "Comparar por" }: { options: string[]; value: string; onChange: (value: string) => void; label?: string }) {
-  return <div className="metric-toggle" role="group" aria-label={label}>{options.map((option) => <button key={option} className={value === option ? "active" : ""} onClick={() => onChange(option)}>{option}</button>)}</div>;
+  return <div className="metric-toggle" role="group" aria-label={label}>{options.map((option) => <button type="button" key={option} className={value === option ? "active" : ""} aria-pressed={value === option} onClick={() => onChange(option)}>{option}</button>)}</div>;
 }
 
 export function ExpandButton({ expanded, label, onClick }: { expanded: boolean; label: string; onClick: () => void }) {
-  return <button type="button" className="expand-button" onClick={onClick} aria-label={expanded ? `Sair da tela cheia de ${label}` : `Abrir ${label} em tela cheia`}><Icon name={expanded ? "collapse" : "expand"} /><span>{expanded ? "Sair da tela cheia" : "Tela cheia"}</span></button>;
+  return <button type="button" className="expand-button" onClick={onClick} aria-label={expanded ? "Sair da tela cheia" : `Abrir ${label} em tela cheia`}><Icon name={expanded ? "collapse" : "expand"} /><span>{expanded ? "Sair da tela cheia" : "Tela cheia"}</span></button>;
 }
 
 type BarItem = {
@@ -61,8 +61,9 @@ type BarItem = {
 export function BarList({ items, onSelect, selected }: { items: BarItem[]; onSelect?: (id: string) => void; selected?: string }) {
   const max = Math.max(1, ...items.map((item) => item.value));
   return <div className="bar-list">{items.map((item) => {
-    const content = <><div className="bar-heading"><strong>{item.label}</strong><span>{item.valueLabel}</span></div><div className="bar-track"><span className={`bar-fill ${item.tone ?? "green"}`} style={{ width: `${Math.max(2, item.value / max * 100)}%` }} /></div>{item.detail ? <small>{item.detail}</small> : null}</>;
-    return onSelect ? <button key={item.id} className={`bar-row ${selected === item.id ? "selected" : ""}`} onClick={() => onSelect(item.id)}>{content}</button> : <div key={item.id} className="bar-row">{content}</div>;
+    const width = item.value <= 0 ? 0 : Math.max(2, item.value / max * 100);
+    const content = <><div className="bar-heading"><strong>{item.label}</strong><span>{item.valueLabel}</span></div><div className="bar-track" aria-hidden="true"><span className={`bar-fill ${item.tone ?? "green"}`} style={{ width: `${width}%` }} /></div>{item.detail ? <small>{item.detail}</small> : null}</>;
+    return onSelect ? <button type="button" key={item.id} className={`bar-row ${selected === item.id ? "selected" : ""}`} aria-pressed={selected === item.id} onClick={() => onSelect(item.id)}>{content}</button> : <div key={item.id} className="bar-row">{content}</div>;
   })}</div>;
 }
 
@@ -80,7 +81,7 @@ export function KpiSummary({ kpis }: { kpis: Kpis }) {
 }
 
 export function Loading({ label = "Preparando a leitura dos dados" }: { label?: string }) {
-  return <div className="loading"><span /><p>{label}</p></div>;
+  return <div className="loading" role="status" aria-live="polite"><span aria-hidden="true" /><p>{label}</p></div>;
 }
 
 export function Empty({ title, copy }: { title: string; copy: string }) {

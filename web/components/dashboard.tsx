@@ -52,12 +52,13 @@ export default function Dashboard() {
         setData(payload);
         setError("");
         if (!filters.date) setFilters((current) => ({ ...current, date: payload.meta.snapshotDate }));
-        if (!payload.options.enterprises.some((item) => item.id === enterpriseId)) setEnterpriseId(payload.options.enterprises[0]?.id ?? "");
+        setEnterprise((current) => current && payload.options.enterprises.some((item) => item.id === current.enterprise.id) ? current : null);
+        setEnterpriseId((current) => payload.options.enterprises.some((item) => item.id === current) ? current : payload.options.enterprises[0]?.id ?? "");
       })
       .catch((reason) => { if (reason.name !== "AbortError") setError(reason.message ?? "Não foi possível carregar o dashboard."); })
-      .finally(() => setDashboardLoading(false));
+      .finally(() => { if (!controller.signal.aborted) setDashboardLoading(false); });
     return () => controller.abort();
-  }, [query, filters.date, enterpriseId]);
+  }, [query, filters.date]);
 
   useEffect(() => {
     if (!enterpriseId || !["blocks", "enterprise"].includes(page)) return;
@@ -70,38 +71,46 @@ export default function Dashboard() {
       .then(async (response) => { const payload = await response.json(); if (!response.ok) throw new Error(payload.error); return payload as EnterpriseData; })
       .then((payload) => { setEnterprise(payload); setError(""); })
       .catch((reason) => { if (reason.name !== "AbortError") setError(reason.message ?? "Não foi possível carregar o empreendimento."); })
-      .finally(() => setEnterpriseLoading(false));
+      .finally(() => { if (!controller.signal.aborted) setEnterpriseLoading(false); });
     return () => controller.abort();
   }, [enterpriseId, enterpriseBlocks, filters, page]);
 
   useEffect(() => {
     if (page !== "velocity" || velocity) return;
+    const controller = new AbortController();
     setVelocityLoading(true);
-    fetch("/api/velocity").then((response) => response.json()).then(setVelocity).catch(() => setVelocity(null)).finally(() => setVelocityLoading(false));
+    fetch("/api/velocity", { signal: controller.signal })
+      .then(async (response) => { const payload = await response.json(); if (!response.ok) throw new Error(payload.error); return payload as VelocityData; })
+      .then(setVelocity)
+      .catch((reason) => { if (reason.name !== "AbortError") setVelocity(null); })
+      .finally(() => { if (!controller.signal.aborted) setVelocityLoading(false); });
+    return () => controller.abort();
   }, [page, velocity]);
 
   const active = NAVIGATION.find((item) => item.id === page)!;
   const clearFilters = () => setFilters((current) => ({ date: current.date, cities: [], typologies: [], statuses: [] }));
   const changeEnterprise = (value: string) => {
     setEnterpriseBlocks([]);
+    setEnterprise(null);
     setEnterpriseId(value);
   };
 
   return <div className="app-shell">
+    <a className="skip-link" href="#dashboard-content">Pular para o conteúdo</a>
     <aside className="sidebar">
       <div className="brand">
         <img className="brand-logo-full" src="/brand/mrv-logo-white.png" alt="MRV" />
-        <img className="brand-logo-symbol" src="/brand/mrv-symbol.png" alt="MRV" />
+        <img className="brand-logo-symbol" src="/brand/mrv-symbol.png" alt="" aria-hidden="true" />
         <div><strong>Consumo & estoque</strong><small>Gestão comercial</small></div>
       </div>
-      <nav aria-label="Navegação principal">{NAVIGATION.map((item) => <button key={item.id} className={page === item.id ? "active" : ""} onClick={() => setPage(item.id)}><Icon name={item.id} /><span>{item.label}</span></button>)}</nav>
+      <nav aria-label="Navegação principal">{NAVIGATION.map((item) => <button type="button" key={item.id} className={page === item.id ? "active" : ""} aria-current={page === item.id ? "page" : undefined} data-label={item.label} onClick={() => setPage(item.id)}><Icon name={item.id} /><span>{item.label}</span></button>)}</nav>
       <div className="sidebar-foot"><span>Aplicação web</span><small>Dados preparados localmente</small></div>
     </aside>
-    <main>
-      <header className="topbar"><div><h1>{active.title}</h1><p>{data ? `Dados de ${dateLabel(data.meta.snapshotDate)}` : "Carregando a base"}</p></div>{data ? <span className="data-pill">{data.meta.scopeRows.toLocaleString("pt-BR")} registros no recorte</span> : null}</header>
+    <main id="dashboard-content" tabIndex={-1}>
+      <header className="topbar"><div><h1>{active.title}</h1><p>{data ? `Dados de ${dateLabel(data.meta.snapshotDate)}` : "Carregando a base"}</p></div>{data ? <span className={`data-pill${dashboardLoading ? " updating" : ""}`} role="status" aria-live="polite">{dashboardLoading ? "Atualizando dados…" : `${data.meta.scopeRows.toLocaleString("pt-BR")} registros no recorte`}</span> : null}</header>
       {data ? <Filters filters={filters} options={data.options} onChange={setFilters} onClear={clearFilters} /> : null}
-      <div className="content">
-        {error ? <div className="error-banner"><strong>Não foi possível continuar</strong><span>{error}</span></div> : null}
+      <div className="content" aria-busy={dashboardLoading}>
+        {error ? <div className="error-banner" role="alert"><strong>Não foi possível continuar</strong><span>{error}</span></div> : null}
         {dashboardLoading && !data ? <Loading /> : data ? <>
           {page === "overview" ? <OverviewView data={data} /> : null}
           {page === "blocks" ? <BlocksView options={data.options.enterprises} enterpriseId={enterpriseId} onEnterpriseChange={changeEnterprise} data={enterprise} loading={enterpriseLoading} /> : null}
