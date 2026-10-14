@@ -47,10 +47,16 @@ function BlockStepper({ blocks, value, onChange, blurOnChange = false }: { block
 
 function Heatmap({ data, scope, selectedBlockId, onInspect }: { data: EnterpriseData; scope: HeatmapScope; selectedBlockId?: string; onInspect: (blockId: string) => void }) {
   const visibleBlocks = useMemo(() => {
-    if (scope === "Todos") return data.blocks;
-    if (scope === "Mais vendidos") return [...data.blocks].sort((a, b) => b.sold - a.sold || b.consumption - a.consumption).slice(0, 12);
-    return [...data.blocks].sort((a, b) => a.sold - b.sold || a.consumption - b.consumption).slice(0, 12);
+    const byLabel = (a: EnterpriseData["blocks"][number], b: EnterpriseData["blocks"][number]) => a.label.localeCompare(b.label, "pt-BR", { numeric: true });
+    if (scope === "Todos") return [...data.blocks].sort(byLabel);
+    const ranked = [...data.blocks].sort((a, b) => b.sold - a.sold || b.consumption - a.consumption || byLabel(a, b));
+    return (scope === "Mais vendidos" ? ranked : ranked.reverse()).slice(0, 12);
   }, [data.blocks, scope]);
+  const hasTies = scope !== "Todos" && new Set(visibleBlocks.map((block) => block.sold)).size < visibleBlocks.length;
+  const shown = visibleBlocks.length === 1 ? "o único bloco" : visibleBlocks.length === data.blocks.length ? `todos os ${visibleBlocks.length} blocos` : `${visibleBlocks.length} de ${data.blocks.length} blocos`;
+  const orderNote = scope === "Todos" || visibleBlocks.length === 1
+    ? `Exibindo ${shown}, em ordem de bloco.`
+    : `Exibindo ${shown}, do ${scope === "Mais vendidos" ? "mais para o menos" : "menos para o mais"} vendido (unidades vendidas).${hasTies ? " Empates na quantidade vendida são desempatados pelo percentual e depois pelo nome do bloco." : ""}`;
   const visibleIds = new Set(visibleBlocks.map((block) => block.id));
   const stacks = [...new Set(data.stacks.filter((row) => visibleIds.has(row.blockId)).map((row) => row.stack))].sort((a, b) => a - b);
   if (!stacks.length) return <Empty title="Sem prumadas comparáveis" copy="As unidades não possuem andar e numeração suficientes para inferir a prumada." />;
@@ -74,7 +80,7 @@ function Heatmap({ data, scope, selectedBlockId, onInspect }: { data: Enterprise
         })}
       </div>)}
     </div>
-    <p className="legend-note">Exibindo {visibleBlocks.length} bloco{visibleBlocks.length === 1 ? "" : "s"}. O número maior é a quantidade vendida; a régua mostra o percentual. Clique no nome de um bloco para abrir o espelho.</p>
+    <p className="legend-note">{orderNote} O número maior é a quantidade vendida; a régua mostra o percentual. Clique no nome de um bloco para abrir o espelho.</p>
   </div>;
 }
 
@@ -198,9 +204,9 @@ export default function BlocksView({ options, enterpriseId, onEnterpriseChange, 
   useEffect(() => { if (data?.blocks.length && !data.blocks.some((block) => block.id === blockId)) setBlockId(data.blocks[data.blocks.length - 1].id); }, [data, blockId]);
   useEffect(() => { setSelectedUnitIds([]); }, [blockId, enterpriseId]);
   const blocksInOrder = useMemo(() => [...(data?.blocks ?? [])].sort((a, b) => a.label.localeCompare(b.label, "pt-BR", { numeric: true })), [data]);
-  const blocksBySales = useMemo(() => [...(data?.blocks ?? [])].sort((a, b) => b.sold - a.sold || b.consumption - a.consumption || a.label.localeCompare(b.label, "pt-BR")), [data]);
+  const blocksBySales = useMemo(() => [...(data?.blocks ?? [])].sort((a, b) => b.sold - a.sold || b.consumption - a.consumption || a.label.localeCompare(b.label, "pt-BR", { numeric: true })), [data]);
   const mostSold = blocksBySales[0];
-  const leastSold = [...blocksBySales].sort((a, b) => a.sold - b.sold || a.consumption - b.consumption || a.label.localeCompare(b.label, "pt-BR"))[0];
+  const leastSold = blocksBySales[blocksBySales.length - 1];
   const topStack = useMemo(() => [...(data?.stacks ?? [])].sort((a, b) => b.sold - a.sold || b.consumption - a.consumption || a.block.localeCompare(b.block, "pt-BR") || a.stack - b.stack)[0], [data]);
   const bars = useMemo(() => data?.blocks.map((row) => ({ id: row.id, label: row.label, value: metric === "Unidades vendidas" ? row.sold : row.consumption, valueLabel: metric === "Unidades vendidas" ? `${integer.format(row.sold)} vendidas` : `${pct(row.consumption, 0)} vendido`, detail: `total ${integer.format(row.total)} · ${pct(row.consumption, 0)} · ${integer.format(row.stock)} não vendidas`, tone: row.consumption >= (data.kpis.consumption ?? 0) ? "green" as const : "orange" as const })) ?? [], [data, metric]);
   const selectedUnits = data?.units.filter((unit) => unit.blockId === blockId && selectedUnitIds.includes(unit.id)) ?? [];
