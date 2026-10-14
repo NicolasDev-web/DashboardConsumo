@@ -6,10 +6,11 @@ import type { DashboardData } from "@/lib/types";
 
 export default function OverviewView({ data }: { data: DashboardData }) {
   const { kpis } = data;
-  const stockLeader = [...data.enterpriseProgress].sort((a, b) => b.stock - a.stock)[0];
+  const byStock = [...data.enterpriseProgress].sort((a, b) => b.stock - a.stock || a.consumption - b.consumption || a.name.localeCompare(b.name, "pt-BR"));
+  const stockLeader = byStock[0];
   const lowProgress = data.progressSummary.find((row) => row.band === "Menos de 50% vendido");
   const highProgress = data.progressSummary.find((row) => row.band === "95% ou mais vendido");
-  const topStock = [...data.enterpriseProgress].filter((row) => row.stock > 0).sort((a, b) => b.stock - a.stock).slice(0, 8);
+  const topStock = byStock.filter((row) => row.stock > 0).slice(0, 8);
 
   return <div className="view-stack">
     <Insight tone={kpis.consumption != null && kpis.consumption >= .8 ? "positive" : "attention"} detail={stockLeader ? `${stockLeader.name} concentra o maior estoque: ${integer.format(stockLeader.stock)} unidades.` : undefined}>
@@ -36,7 +37,7 @@ export default function OverviewView({ data }: { data: DashboardData }) {
 
     <section className="panel">
       <SectionHeader title="Em que andares está o estoque?" copy="Número absoluto primeiro; percentual vendido como contexto." />
-      <BarList items={[...data.floors].sort((a, b) => b.stock - a.stock).slice(0, 12).map((row) => ({ id: String(row.floor), label: `${row.floor}º andar`, value: row.stock, valueLabel: `${integer.format(row.stock)} não vendidas`, detail: `${integer.format(row.sold)} vendidas de ${integer.format(row.total)} · ${pct(row.consumption, 0)}`, tone: "orange" }))} />
+      <BarList items={[...data.floors].sort((a, b) => b.stock - a.stock || a.consumption - b.consumption || a.floor - b.floor).slice(0, 12).map((row) => ({ id: String(row.floor), label: `${row.floor}º andar`, value: row.stock, valueLabel: `${integer.format(row.stock)} não vendidas`, detail: `${integer.format(row.sold)} vendidas de ${integer.format(row.total)} · ${pct(row.consumption, 0)}`, tone: "orange" }))} />
       {data.floorBand ? <p className="comparison-note">Andares até o {data.floorBand.lowMax}º: <strong>{pct(data.floorBand.low.consumption)}</strong> vendido. A partir do {data.floorBand.highMin}º: <strong>{pct(data.floorBand.high.consumption)}</strong>.</p> : null}
     </section>
 

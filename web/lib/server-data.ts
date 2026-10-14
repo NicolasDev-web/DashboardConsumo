@@ -200,7 +200,7 @@ export function dashboardData(params: URLSearchParams): DashboardData {
   const scopeKpis = kpis(filtered);
   const enterpriseProgress = grouped(filtered, (unit) => ({ id: unit.enterpriseId, city: unit.city, name: unit.enterpriseName }))
     .map((row) => ({ ...row, consumption: row.consumption ?? 0, band: band(row.consumption ?? 0) }))
-    .sort((a, b) => b.consumption - a.consumption || b.sold - a.sold);
+    .sort((a, b) => b.consumption - a.consumption || b.sold - a.sold || String(a.name).localeCompare(String(b.name), "pt-BR"));
   const progressSummary = PROGRESS_BANDS.map(({ label }) => {
     const rows = enterpriseProgress.filter((row) => row.band === label);
     const stock = rows.reduce((sum, row) => sum + row.stock, 0);

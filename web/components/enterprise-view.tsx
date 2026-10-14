@@ -16,17 +16,25 @@ export default function EnterpriseView({ options, enterpriseId, onEnterpriseChan
   loading: boolean;
 }) {
   const [metric, setMetric] = useState("Ainda não vendidas");
-  const floors = useMemo(() => {
-    if (!data) return [];
-    const field = metric === "Ainda não vendidas" ? "stock" : metric === "Unidades vendidas" ? "sold" : "consumption";
-    return [...data.floors].sort((a, b) => b[field] - a[field]);
+  const { floors, sameRanking } = useMemo(() => {
+    if (!data) return { floors: [], sameRanking: false };
+    const bySold = [...data.floors].sort((a, b) => b.sold - a.sold || b.consumption - a.consumption || a.floor - b.floor);
+    const byShare = [...data.floors].sort((a, b) => b.consumption - a.consumption || b.sold - a.sold || a.floor - b.floor);
+    const byStock = [...data.floors].sort((a, b) => b.stock - a.stock || a.consumption - b.consumption || a.floor - b.floor);
+    return {
+      floors: metric === "Ainda não vendidas" ? byStock : metric === "Unidades vendidas" ? bySold : byShare,
+      sameRanking: metric !== "Ainda não vendidas" && bySold.every((row, index) => row.floor === byShare[index]?.floor),
+    };
   }, [data, metric]);
+  const floorNote = metric === "Ainda não vendidas"
+    ? "Ordenado do andar com mais para o com menos unidades não vendidas; empates seguem o menor percentual vendido e o número do andar."
+    : `Ordenado do maior para o menor ${metric === "Unidades vendidas" ? "número de unidades vendidas" : "percentual vendido"}; empates seguem ${metric === "Unidades vendidas" ? "o percentual" : "as unidades vendidas"} e o número do andar.${sameRanking && floors.length > 1 ? ` Aqui a ordem é a mesma em unidades e em percentual${new Set(floors.map((row) => row.total)).size === 1 ? ", porque todos os andares têm o mesmo total de unidades" : ""}.` : ""}`;
   if (!options.length) return <Empty title="Nenhum empreendimento disponível" copy="Ajuste os filtros para continuar." />;
   const selected = options.find((option) => option.id === enterpriseId);
   return <div className="view-stack"><label className="entity-picker"><span className="entity-picker-heading"><span>Empreendimento</span>{selected ? <BrandBadge name={selected.name} /> : null}</span><select value={enterpriseId} onChange={(event) => onEnterpriseChange(event.target.value)}>{options.map((option) => <option key={option.id} value={option.id}>{option.name} · {option.city}</option>)}</select></label>{loading && data ? <div className="update-status" role="status">Atualizando o recorte do empreendimento…</div> : null}{loading && !data ? <Loading label="Lendo o empreendimento" /> : !data ? <Empty title="Não foi possível carregar o empreendimento" copy="Tente selecionar o empreendimento novamente ou ajuste os filtros." /> : (() => {
     const groups = Object.fromEntries(data.stockGroups.map((group) => [group.group, group.units]));
-    const mostStock = [...data.floors].sort((a, b) => b.stock - a.stock)[0];
-    const leastSold = [...data.floors].sort((a, b) => a.consumption - b.consumption)[0];
+    const mostStock = [...data.floors].sort((a, b) => b.stock - a.stock || a.consumption - b.consumption || a.floor - b.floor)[0];
+    const leastSold = [...data.floors].sort((a, b) => a.consumption - b.consumption || b.stock - a.stock || a.floor - b.floor)[0];
     const unsold = data.units.filter((unit) => !unit.sold).sort((a, b) => a.block.localeCompare(b.block, "pt-BR") || (a.floor ?? 999) - (b.floor ?? 999));
     const difference = (data.kpis.consumption ?? 0) - data.baseline;
     return <>
@@ -38,7 +46,7 @@ export default function EnterpriseView({ options, enterpriseId, onEnterpriseChan
         { value: pct(data.kpis.consumption), label: "percentual vendido" },
         { value: mostStock ? `${mostStock.floor}º andar` : "—", label: mostStock ? `mais estoque · ${integer.format(mostStock.stock)} unidades` : "mais estoque" },
       ]} />
-      <section className="panel"><SectionHeader title="Vendas e estoque por andar" copy="Compare números absolutos e percentual. Cada linha mantém o total como referência." action={<MetricToggle options={["Ainda não vendidas", "Unidades vendidas", "Percentual vendido"]} value={metric} onChange={setMetric} />} /><div className="split-main"><BarList items={floors.map((row) => ({ id: String(row.floor), label: `${row.floor}º andar`, value: metric === "Ainda não vendidas" ? row.stock : metric === "Unidades vendidas" ? row.sold : row.consumption, valueLabel: metric === "Ainda não vendidas" ? `${integer.format(row.stock)} não vendidas` : metric === "Unidades vendidas" ? `${integer.format(row.sold)} vendidas` : `${pct(row.consumption, 0)} vendido`, detail: `${integer.format(row.sold)} vendidas · total ${integer.format(row.total)} · ${pct(row.consumption, 0)}`, tone: metric === "Ainda não vendidas" ? "orange" : "green" }))} /><div className="highlights"><article><span>Mais unidades não vendidas</span><strong>{mostStock ? `${mostStock.floor}º andar` : "—"}</strong><p>{mostStock ? `${integer.format(mostStock.stock)} unidades · ${pct(mostStock.stock / Math.max(1, data.kpis.stock), 0)} do estoque` : "Sem estoque"}</p></article><article><span>Menor percentual vendido</span><strong>{leastSold ? `${leastSold.floor}º andar` : "—"}</strong><p>{leastSold ? `${integer.format(leastSold.sold)} vendidas de ${integer.format(leastSold.total)} · ${pct(leastSold.consumption, 0)}` : "Sem dados"}</p></article></div></div></section>
+      <section className="panel"><SectionHeader title="Vendas e estoque por andar" copy="Compare números absolutos e percentual. Cada linha mantém o total como referência." action={<MetricToggle options={["Ainda não vendidas", "Unidades vendidas", "Percentual vendido"]} value={metric} onChange={setMetric} />} /><div className="split-main"><BarList items={floors.map((row) => ({ id: String(row.floor), label: `${row.floor}º andar`, value: metric === "Ainda não vendidas" ? row.stock : metric === "Unidades vendidas" ? row.sold : row.consumption, valueLabel: metric === "Ainda não vendidas" ? `${integer.format(row.stock)} não vendidas` : metric === "Unidades vendidas" ? `${integer.format(row.sold)} vendidas` : `${pct(row.consumption, 0)} vendido`, detail: `${integer.format(row.sold)} vendidas · total ${integer.format(row.total)} · ${pct(row.consumption, 0)}`, tone: metric === "Ainda não vendidas" ? "orange" : "green" }))} /><div className="highlights"><article><span>Mais unidades não vendidas</span><strong>{mostStock ? `${mostStock.floor}º andar` : "—"}</strong><p>{mostStock ? `${integer.format(mostStock.stock)} unidades · ${pct(mostStock.stock / Math.max(1, data.kpis.stock), 0)} do estoque` : "Sem estoque"}</p></article><article><span>Menor percentual vendido</span><strong>{leastSold ? `${leastSold.floor}º andar` : "—"}</strong><p>{leastSold ? `${integer.format(leastSold.sold)} vendidas de ${integer.format(leastSold.total)} · ${pct(leastSold.consumption, 0)}` : "Sem dados"}</p></article></div></div><p className="legend-note">{floorNote}</p></section>
       <details className="details-panel"><summary>Entender os status das unidades não vendidas</summary><div className="details-body"><StockComposition groups={data.stockGroups} /></div></details>
       {unsold.length ? <section className="panel"><SectionHeader title="Unidades não vendidas" copy="Detalhe operacional para investigar o estoque atual." action={<button className="secondary-button" onClick={() => csvDownload(`unidades_${data.enterprise.name}.csv`, data.units)}>Exportar todas</button>} /><TableShell><table><thead><tr><th>Bloco</th><th>Unidade</th><th>Andar</th><th>Tipologia</th><th>Status</th></tr></thead><tbody>{unsold.slice(0, 500).map((unit) => <tr key={unit.id}><td>{unit.block}</td><td>{unit.unit}</td><td>{unit.floor ?? "—"}</td><td>{unit.typology || "—"}</td><td>{unit.status}</td></tr>)}</tbody></table></TableShell>{unsold.length > 500 ? <p className="legend-note">Mostrando as primeiras 500 unidades. O CSV contém o recorte completo.</p> : null}</section> : null}
     </>;

@@ -208,7 +208,10 @@ export default function BlocksView({ options, enterpriseId, onEnterpriseChange, 
   const mostSold = blocksBySales[0];
   const leastSold = blocksBySales[blocksBySales.length - 1];
   const topStack = useMemo(() => [...(data?.stacks ?? [])].sort((a, b) => b.sold - a.sold || b.consumption - a.consumption || a.block.localeCompare(b.block, "pt-BR") || a.stack - b.stack)[0], [data]);
-  const bars = useMemo(() => data?.blocks.map((row) => ({ id: row.id, label: row.label, value: metric === "Unidades vendidas" ? row.sold : row.consumption, valueLabel: metric === "Unidades vendidas" ? `${integer.format(row.sold)} vendidas` : `${pct(row.consumption, 0)} vendido`, detail: `total ${integer.format(row.total)} · ${pct(row.consumption, 0)} · ${integer.format(row.stock)} não vendidas`, tone: row.consumption >= (data.kpis.consumption ?? 0) ? "green" as const : "orange" as const })) ?? [], [data, metric]);
+  const blocksByShare = useMemo(() => [...blocksBySales].sort((a, b) => b.consumption - a.consumption || b.sold - a.sold || a.label.localeCompare(b.label, "pt-BR", { numeric: true })), [blocksBySales]);
+  const bars = useMemo(() => (metric === "Unidades vendidas" ? blocksBySales : blocksByShare).map((row) => ({ id: row.id, label: row.label, value: metric === "Unidades vendidas" ? row.sold : row.consumption, valueLabel: metric === "Unidades vendidas" ? `${integer.format(row.sold)} vendidas` : `${pct(row.consumption, 0)} vendido`, detail: `total ${integer.format(row.total)} · ${pct(row.consumption, 0)} · ${integer.format(row.stock)} não vendidas`, tone: row.consumption >= (data?.kpis.consumption ?? 0) ? "green" as const : "orange" as const })), [blocksBySales, blocksByShare, data, metric]);
+  const sameRanking = blocksBySales.every((block, index) => block.id === blocksByShare[index]?.id);
+  const rankingNote = <p className="legend-note">Ordenado do maior para o menor {metric === "Unidades vendidas" ? "número de unidades vendidas" : "percentual vendido"}; empates seguem {metric === "Unidades vendidas" ? "o percentual" : "as unidades vendidas"} e o nome do bloco.{sameRanking && blocksBySales.length > 1 ? ` Aqui a ordem é a mesma nos dois critérios${new Set(blocksBySales.map((block) => block.total)).size === 1 ? ", porque todos os blocos têm o mesmo total de unidades" : ""}.` : ""}</p>;
   const selectedUnits = data?.units.filter((unit) => unit.blockId === blockId && selectedUnitIds.includes(unit.id)) ?? [];
   const closeUnitDetails = useCallback(() => {
     setSelectedUnitIds([]);
@@ -319,7 +322,7 @@ export default function BlocksView({ options, enterpriseId, onEnterpriseChange, 
     {loading && !ready ? <Loading label="Organizando blocos e prumadas" /> : !ready ? <Empty title="Não foi possível carregar os blocos" copy="Tente selecionar o empreendimento novamente ou ajuste os filtros." /> : <>
       {loading ? <div className="update-status" role="status">Atualizando o recorte do empreendimento…</div> : null}
       {summary}
-      <section className="panel" ref={rankingSection}><SectionHeader title="Quais blocos venderam mais?" copy="Verde está na média ou acima do empreendimento; laranja, abaixo." action={<div className="section-actions">{metricToggle}<ExpandButton expanded={false} label="o ranking de blocos" onClick={() => openPresentation("ranking")} /></div>} /><BarList items={bars} onSelect={inspectBlock} selected={blockId} /></section>
+      <section className="panel" ref={rankingSection}><SectionHeader title="Quais blocos venderam mais?" copy="Verde está na média ou acima do empreendimento; laranja, abaixo." action={<div className="section-actions">{metricToggle}<ExpandButton expanded={false} label="o ranking de blocos" onClick={() => openPresentation("ranking")} /></div>} /><BarList items={bars} onSelect={inspectBlock} selected={blockId} />{rankingNote}</section>
       <section className="panel" ref={heatmapSection}><SectionHeader title="Como as prumadas se comparam?" copy="Veja quantas unidades cada prumada vendeu e use o percentual apenas como contexto." action={<div className="section-actions">{scopeToggle}<ExpandButton expanded={false} label="o comparativo de prumadas" onClick={() => openPresentation("heatmap")} /></div>} /><Heatmap data={ready} scope={heatmapScope} onInspect={inspectBlock} /></section>
       <section className="panel building-panel" ref={buildingSection}>
         <SectionHeader title="Espelho do bloco" copy="Cada linha mostra um andar com suas unidades por prumada e, no fim, quanto o andar já vendeu. Clique em um apartamento para abrir sua ficha." />
@@ -338,7 +341,7 @@ export default function BlocksView({ options, enterpriseId, onEnterpriseChange, 
         </header>
         <div id="presentation-body" key={presentation} className={`presentation-body${presentation === "heatmap" || presentation === "building" ? " grid-screen" : ""}`} role="tabpanel" aria-labelledby={`presentation-tab-${presentation}`}>
           {presentation === "summary" ? <div className="presentation-summary">{summary}</div> : null}
-          {presentation === "ranking" ? <BarList items={bars} onSelect={inspectBlock} selected={blockId} /> : null}
+          {presentation === "ranking" ? <><BarList items={bars} onSelect={inspectBlock} selected={blockId} />{rankingNote}</> : null}
           {presentation === "heatmap" ? <Heatmap data={ready} scope={heatmapScope} selectedBlockId={blockId} onInspect={inspectBlock} /> : null}
           {presentation === "building" && blockId ? <BuildingGrid data={ready} blockId={blockId} mode={mirrorMode} expanded selectedUnitIds={selectedUnitIds} onSelect={openUnitDetails} /> : null}
         </div>
